@@ -50,7 +50,7 @@ func (a *Api) GetHandlersChain() gin.HandlersChain {
 		for i := 0; i < reflect.TypeOf(v).NumMethod(); i++ {
 			value := reflect.ValueOf(v)
 			method := reflect.TypeOf(v).Method(i)
-			if !isHttpMethod(method.Name) {
+			if v1, _, _ := isHttpMethod(method.Name); !v1 {
 				continue
 			}
 			args := parseArgs(method)
@@ -73,12 +73,20 @@ func (a *Api) registerResource(resource interface{}, url string) {
 	for i := 0; i < reflect.TypeOf(resource).NumMethod(); i++ {
 		value := reflect.ValueOf(resource)
 		method := reflect.TypeOf(resource).Method(i)
-		if !isHttpMethod(method.Name) {
+		httpMethod := ""
+		relativePath := ""
+		if v1, v2, v3 := isHttpMethod(method.Name); !v1 {
 			continue
+		} else {
+			httpMethod = v3
+			if !v2 {
+				relativePath = strings.ToLower(method.Name)[len(httpMethod):]
+			}
 		}
+
 		args := parseArgs(method)
 		url := createUrl(url, args)
 		g := a.App.Group(url, parseMiddlewares(resource, method.Name)...)
-		g.Handle(strings.ToUpper(method.Name), "", createHandlerFunc(value, method, args))
+		g.Handle(httpMethod, relativePath, createHandlerFunc(value, method, args))
 	}
 }
