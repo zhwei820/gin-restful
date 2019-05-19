@@ -31,13 +31,23 @@ func getJsonData(c *gin.Context, json interface{}) (interface{}, error) {
 	return value.Elem().Interface(), nil
 }
 
-func isHttpMethod(name string) bool {
+func isHttpMethod(name string) (bool, bool, string) {
+	l1 := len(name)
+
 	for _, k := range httpmethods {
-		if strings.ToUpper(name) == k {
-			return true
+		l := len(k)
+		if l > l1 {
+			l = l1
+		}
+		if strings.ToUpper(name)[0:l] == k {
+			if l1 != l {
+				return true, false, k
+			} else {
+				return true, true, k
+			}
 		}
 	}
-	return false
+	return false, false, ""
 }
 
 func createUrl(url string, args []reflect.Type) string {
