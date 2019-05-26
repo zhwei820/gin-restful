@@ -83,10 +83,10 @@ func (a *Api) registerResource(resource interface{}, url string) {
 				relativePath = strings.ToLower(method.Name)[len(httpMethod):]
 			}
 		}
-
+		url1 := url + "/" + relativePath
 		args := parseArgs(method)
-		url := createUrl(url, args)
-		g := a.App.Group(url, parseMiddlewares(resource, method.Name)...)
-		g.Handle(httpMethod, relativePath, createHandlerFunc(value, method, args))
+		url1 = createUrl(url1, args)
+		g := a.App.Group(url1, parseMiddlewares(resource, method.Name)...)
+		g.Handle(httpMethod, "", createHandlerFunc(value, method, args))
 	}
 }
