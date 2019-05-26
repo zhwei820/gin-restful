@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"github.com/gin-gonic/gin/binding"
+
 )
 
 var httpmethods = []string{
@@ -22,11 +24,19 @@ var httpmethods = []string{
 	http.MethodTrace,
 }
 
-func getJsonData(c *gin.Context, json interface{}) (interface{}, error) {
+func getJsonData(c *gin.Context, json interface{}, method reflect.Method) (interface{}, error) {
 	mustType := reflect.TypeOf(json)
 	value := reflect.New(mustType)
-	if err := c.ShouldBindJSON(value.Interface()); err != nil {
-		return nil, err
+	if strings.HasPrefix(method.Name, "Patch") {
+		if err := c.ShouldBindBodyWith(value.Interface(), binding.JSON); err != nil {
+			return nil, err
+		}
+
+	} else {
+		if err := c.ShouldBindJSON(value.Interface()); err != nil {
+			return nil, err
+		}
+
 	}
 	return value.Elem().Interface(), nil
 }
@@ -87,7 +97,7 @@ func parseArgs(method reflect.Method) []reflect.Type {
 	return args
 }
 
-func createValues(c *gin.Context, resource reflect.Value, args []reflect.Type) ([]reflect.Value, error) {
+func createValues(c *gin.Context, resource reflect.Value, args []reflect.Type, method reflect.Method) ([]reflect.Value, error) {
 	values := []reflect.Value{resource}
 
 	for i, arg := range args {
@@ -130,7 +140,7 @@ func createValues(c *gin.Context, resource reflect.Value, args []reflect.Type) (
 			break
 		case reflect.Struct:
 			body := reflect.New(arg).Elem().Interface()
-			if v, err := getJsonData(c, body); err != nil {
+			if v, err := getJsonData(c, body, method); err != nil {
 				return []reflect.Value{}, ApplicationError{
 					Message: err.Error(),
 					Status:  400,
@@ -157,7 +167,7 @@ func contains(s []string, e string) bool {
 
 func createHandlerFunc(resource reflect.Value, method reflect.Method, args []reflect.Type) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		values, err := createValues(c, resource, args)
+		values, err := createValues(c, resource, args, method)
 		if err != nil {
 			ae, ok := err.(ApplicationError)
 			status := http.StatusInternalServerError
